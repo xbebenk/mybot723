@@ -1,0 +1,627 @@
+From d034475e26f3309c986adbedd3212751defe4088 Mon Sep 17 00:00:00 2001
+From: demen10
+Date: Fri, 18 Aug 2017 14:44:04 +0700
+Subject: [PATCH] Use troops from slots 11++ (ExtendedAttackBar)
+
+---
+ COCBot/GUI/MBR GUI Control Child Attack.au3        |  12 ++
+ ...GUI Design Child Attack - Activebase-Attack.au3 |   8 +
+ ...R GUI Design Child Attack - Deadbase-Attack.au3 |   9 ++
+ COCBot/MBR Functions.au3                           |   1 +
+ COCBot/MBR Global Variables.au3                    |   4 +
+ .../Attack/AttackCSV/DropTroopFromINI.au3          |  17 ++-
+ COCBot/functions/Attack/PrepareAttack.au3          |  11 ++
+ .../functions/Attack/Troops/CheckHeroesHealth.au3  |  34 +++--
+ .../functions/Attack/Troops/GetXPosOfArmySlot.au3  |   2 +
+ COCBot/functions/Config/applyConfig.au3            |  12 ++
+ COCBot/functions/Config/readConfig.au3             |   4 +
+ COCBot/functions/Config/saveConfig.au3             |   6 +
+ .../Image Search/ExtendedAttackBarCheck.au3        | 164 +++++++++++++++++++++
+ COCBot/functions/Image Search/imglocAttackBar.au3  |  18 ++-
+ 14 files changed, 288 insertions(+), 14 deletions(-)
+ create mode 100644 COCBot/functions/Image Search/ExtendedAttackBarCheck.au3
+
+diff --git a/COCBot/GUI/MBR GUI Control Child Attack.au3 b/COCBot/GUI/MBR GUI Control Child Attack.au3
+index 0957323..5240ace 100644
+--- a/COCBot/GUI/MBR GUI Control Child Attack.au3	
++++ b/COCBot/GUI/MBR GUI Control Child Attack.au3	
+@@ -55,18 +55,25 @@ Func cmbDBAlgorithm()
+ 				GUISetState(@SW_SHOWNOACTIVATE, $g_hGUI_DEADBASE_ATTACK_STANDARD)
+ 				GUISetState(@SW_HIDE, $g_hGUI_DEADBASE_ATTACK_SCRIPTED)
+ 				GUISetState(@SW_HIDE, $g_hGUI_DEADBASE_ATTACK_MILKING)
++				GUICtrlSetState($g_hChkExtendedAttackBarDB, $GUI_UNCHECKED)	; ExtendedAttackBar Demen
++				GUICtrlSetState($g_hChkExtendedAttackBarDB, $GUI_DISABLE)	; ExtendedAttackBar Demen
+ 			Case $iCmbValue = 1 ; Scripted Attack
+ 				GUISetState(@SW_HIDE, $g_hGUI_DEADBASE_ATTACK_STANDARD)
+ 				GUISetState(@SW_SHOWNOACTIVATE, $g_hGUI_DEADBASE_ATTACK_SCRIPTED)
+ 				GUISetState(@SW_HIDE, $g_hGUI_DEADBASE_ATTACK_MILKING)
++				GUICtrlSetState($g_hChkExtendedAttackBarDB, $GUI_ENABLE)	; ExtendedAttackBar Demen
+ 			Case $iCmbValue = 2 ; Milking Attack
+ 				GUISetState(@SW_HIDE, $g_hGUI_DEADBASE_ATTACK_STANDARD)
+ 				GUISetState(@SW_HIDE, $g_hGUI_DEADBASE_ATTACK_SCRIPTED)
+ 				GUISetState(@SW_SHOWNOACTIVATE, $g_hGUI_DEADBASE_ATTACK_MILKING)
++				GUICtrlSetState($g_hChkExtendedAttackBarDB, $GUI_UNCHECKED)	; ExtendedAttackBar Demen
++				GUICtrlSetState($g_hChkExtendedAttackBarDB, $GUI_DISABLE)	; ExtendedAttackBar Demen
+ 			Case Else
+ 				GUISetState(@SW_HIDE, $g_hGUI_DEADBASE_ATTACK_STANDARD)
+ 				GUISetState(@SW_HIDE, $g_hGUI_DEADBASE_ATTACK_SCRIPTED)
+ 				GUISetState(@SW_HIDE, $g_hGUI_DEADBASE_ATTACK_MILKING)
++				GUICtrlSetState($g_hChkExtendedAttackBarDB, $GUI_UNCHECKED)	; ExtendedAttackBar Demen
++				GUICtrlSetState($g_hChkExtendedAttackBarDB, $GUI_DISABLE)	; ExtendedAttackBar Demen
+ 		EndSelect
+ 	EndIf
+ EndFunc   ;==>cmbDBAlgorithm
+@@ -80,12 +87,17 @@ Func cmbABAlgorithm()
+ 			Case $iCmbValue = 0 ; Standard Attack
+ 				GUISetState(@SW_SHOWNOACTIVATE, $g_hGUI_ACTIVEBASE_ATTACK_STANDARD)
+ 				GUISetState(@SW_HIDE, $g_hGUI_ACTIVEBASE_ATTACK_SCRIPTED)
++				GUICtrlSetState($g_hChkExtendedAttackBarLB, $GUI_UNCHECKED)	; Demen
++				GUICtrlSetState($g_hChkExtendedAttackBarLB, $GUI_DISABLE)	; Demen
+ 			Case $iCmbValue = 1 ; Scripted Attack
+ 				GUISetState(@SW_HIDE, $g_hGUI_ACTIVEBASE_ATTACK_STANDARD)
+ 				GUISetState(@SW_SHOWNOACTIVATE, $g_hGUI_ACTIVEBASE_ATTACK_SCRIPTED)
++				GUICtrlSetState($g_hChkExtendedAttackBarLB, $GUI_ENABLE)	; Demen
+ 			Case Else
+ 				GUISetState(@SW_HIDE, $g_hGUI_ACTIVEBASE_ATTACK_STANDARD)
+ 				GUISetState(@SW_HIDE, $g_hGUI_ACTIVEBASE_ATTACK_SCRIPTED)
++				GUICtrlSetState($g_hChkExtendedAttackBarLB, $GUI_UNCHECKED)	; Demen
++				GUICtrlSetState($g_hChkExtendedAttackBarLB, $GUI_DISABLE)	; Demen
+ 		EndSelect
+ 	EndIf
+ EndFunc   ;==>cmbABAlgorithm
+diff --git a/COCBot/GUI/MBR GUI Design Child Attack - Activebase-Attack.au3 b/COCBot/GUI/MBR GUI Design Child Attack - Activebase-Attack.au3
+index e5b1ae1..433d62f 100644
+--- a/COCBot/GUI/MBR GUI Design Child Attack - Activebase-Attack.au3	
++++ b/COCBot/GUI/MBR GUI Design Child Attack - Activebase-Attack.au3	
+@@ -174,4 +174,12 @@ Func CreateAttackSearchActiveBaseAttack()
+    _GUICtrlComboBox_SetCurSel($g_hCmbTHSnipeBeforeLBScript,_GUICtrlComboBox_FindStringExact($g_hCmbTHSnipeBeforeLBScript, "Bam"))
+ 	   GUICtrlCreateGroup("", -99, -99, 1, 1)
+ 
++	; ExtendedAttackBar - Demen
++	Local $x = 10, $y = 352
++	GUICtrlCreateGroup("Extended attack troop bar",  $x - 5, $y - 20, 145, 40,$SS_CENTER)
++		$g_hChkExtendedAttackBarLB = GUICtrlCreateCheckbox("Use troops at slot 11+", $x, $y - 5, -1, -1)
++			_GUICtrlSetTip(-1, "Drag the attack troop bar for more troops, spells and CC spells")
++			GUICtrlSetState(-1, $GUI_DISABLE)
++	GUICtrlCreateGroup("", -99, -99, 1, 1)
++	; ExtendedAttackBar - Demen
+ EndFunc
+diff --git a/COCBot/GUI/MBR GUI Design Child Attack - Deadbase-Attack.au3 b/COCBot/GUI/MBR GUI Design Child Attack - Deadbase-Attack.au3
+index c553231..d995a88 100644
+--- a/COCBot/GUI/MBR GUI Design Child Attack - Deadbase-Attack.au3	
++++ b/COCBot/GUI/MBR GUI Design Child Attack - Deadbase-Attack.au3	
+@@ -161,4 +161,13 @@ Func CreateAttackSearchDeadBaseAttack()
+    _GUICtrlComboBox_SetCurSel($g_hCmbTHSnipeBeforeDBScript,_GUICtrlComboBox_FindStringExact($g_hCmbTHSnipeBeforeDBScript, "Bam"))
+ 
+    GUICtrlCreateGroup("", -99, -99, 1, 1)
++
++	; ExtendedAttackBar - Demen
++	Local $x = 10, $y = 352
++	GUICtrlCreateGroup("Extended Attack troop bar",  $x - 5, $y - 20, 145, 40, $SS_CENTER)
++		$g_hChkExtendedAttackBarDB = GUICtrlCreateCheckbox("Use troops at slot 11+", $x, $y - 5, -1, -1)
++			_GUICtrlSetTip(-1, "Drag the attack troop bar for more troops, spells and CC spells")
++			GUICtrlSetState(-1, $GUI_DISABLE)
++	GUICtrlCreateGroup("", -99, -99, 1, 1)
++	; ExtendedAttackBar - Demen
+ EndFunc
+diff --git a/COCBot/MBR Functions.au3 b/COCBot/MBR Functions.au3
+index 464cdb2..a4c6fbf 100644
+--- a/COCBot/MBR Functions.au3	
++++ b/COCBot/MBR Functions.au3	
+@@ -129,6 +129,7 @@
+ #include "functions\Image Search\imglocCheckWall.au3"
+ #include "functions\Image Search\imglocTHSearch.au3"
+ #include "functions\Image Search\imglocAttackBar.au3"
++#include "functions\Image Search\ExtendedAttackBarCheck.au3"
+ 
+ 
+ #include "functions\Main Screen\checkMainScreen.au3"
+diff --git a/COCBot/MBR Global Variables.au3 b/COCBot/MBR Global Variables.au3
+index 0b9f121..6a19254 100644
+--- a/COCBot/MBR Global Variables.au3	
++++ b/COCBot/MBR Global Variables.au3	
+@@ -1526,4 +1526,8 @@ $g_oBldgImages.add($eBldgWizTower & "_" & "1", @ScriptDir & "\imgxml\Buildings\W
+ $g_oBldgImages.add($eBldgMortar & "_" & "0", @ScriptDir & "\imgxml\Buildings\Mortars")
+ $g_oBldgImages.add($eBldgAirDefense & "_" & "0", @ScriptDir & "\imgxml\Buildings\ADefense")
+ 
++; ExtendedAttackBar
++Global $g_hChkExtendedAttackBarLB, $g_hChkExtendedAttackBarDB, $g_abChkExtendedAttackBar[2]
++Global $g_iTotalAttackSlot = 10, $g_bDraggedAttackBar = False ; flag if AttackBar is dragged or not
++
+ ; EOF
+diff --git a/COCBot/functions/Attack/AttackCSV/DropTroopFromINI.au3 b/COCBot/functions/Attack/AttackCSV/DropTroopFromINI.au3
+index daa9a0d..b23d940 100644
+--- a/COCBot/functions/Attack/AttackCSV/DropTroopFromINI.au3
++++ b/COCBot/functions/Attack/AttackCSV/DropTroopFromINI.au3
+@@ -86,6 +86,15 @@ Func DropTroopFromINI($vectors, $indexStart, $indexEnd, $indexArray, $qtaMin, $q
+ 		EndIf
+ 	Next
+ 
++	; ExtendedAttackBar - Demen
++	If $troopPosition >= 0 And $troopPosition < $g_iTotalAttackSlot - 10 Then ; can only be selected when in 1st page of troopbar
++		If $g_bDraggedAttackBar Then DragAttackBar($g_iTotalAttackSlot, True) ; return drag
++	ElseIf $troopPosition > 10 Then ; can only be selected when in 2nd page of troopbar
++		If $g_bDraggedAttackBar = False Then DragAttackBar($g_iTotalAttackSlot, False) ; drag forward
++	EndIf
++	If $g_bDraggedAttackBar Then $troopPosition -= $g_iTotalAttackSlot - 10
++	; ExtendedAttackBar - Demen
++
+ 	Local $usespell = True
+ 	Switch $iTroopIndex
+ 		Case $eLSpell
+@@ -175,25 +184,25 @@ Func DropTroopFromINI($vectors, $indexStart, $indexEnd, $indexArray, $qtaMin, $q
+ 							If $debug = True Then
+ 								Setlog("dropHeroes(" & $pixel[0] & ", " & $pixel[1] & ", " & $g_iKingSlot & ", -1, -1) ")
+ 							Else
+-								dropHeroes($pixel[0], $pixel[1], $g_iKingSlot, -1, -1)
++								dropHeroes($pixel[0], $pixel[1], $troopPosition, -1, -1) ; was $g_iKingSlot, Demen
+ 							EndIf
+ 						Case $eQueen
+ 							If $debug = True Then
+ 								Setlog("dropHeroes(" & $pixel[0] & ", " & $pixel[1] & ",-1," & $g_iQueenSlot & ", -1) ")
+ 							Else
+-								dropHeroes($pixel[0], $pixel[1], -1, $g_iQueenSlot, -1)
++								dropHeroes($pixel[0], $pixel[1], -1, $troopPosition, -1) ; was $g_iQueenSlot, Demen
+ 							EndIf
+ 						Case $eWarden
+ 							If $debug = True Then
+ 								Setlog("dropHeroes(" & $pixel[0] & ", " & $pixel[1] & ", -1, -1," & $g_iWardenSlot & ") ")
+ 							Else
+-								dropHeroes($pixel[0], $pixel[1], -1, -1, $g_iWardenSlot)
++								dropHeroes($pixel[0], $pixel[1], -1, -1, $troopPosition) ; was $g_iWardenSlot, Demen
+ 							EndIf
+ 						Case $eCastle
+ 							If $debug = True Then
+ 								Setlog("dropCC(" & $pixel[0] & ", " & $pixel[1] & ", " & $g_iClanCastleSlot & ")")
+ 							Else
+-								dropCC($pixel[0], $pixel[1], $g_iClanCastleSlot)
++								dropCC($pixel[0], $pixel[1], $troopPosition) ; was $g_iClanCastleSlot, Demen
+ 							EndIf
+ 						Case $eLSpell To $eSkSpell
+ 							If $debug = True Then
+diff --git a/COCBot/functions/Attack/PrepareAttack.au3 b/COCBot/functions/Attack/PrepareAttack.au3
+index 0961682..755cc63 100644
+--- a/COCBot/functions/Attack/PrepareAttack.au3
++++ b/COCBot/functions/Attack/PrepareAttack.au3
+@@ -29,6 +29,9 @@ Func PrepareAttack($pMatchMode, $Remaining = False) ;Assigns troops
+ 				$g_aHeroesTimerActivation[$i] = 0
+ 			Next
+ 		EndIf
++		; ExtendedAttackBar Demen
++		$g_iTotalAttackSlot = 10 ; reset all flag
++		$g_bDraggedAttackBar = False
+ 	EndIf
+ 
+ 	Local $troopsnumber = 0
+@@ -56,6 +59,14 @@ Func PrepareAttack($pMatchMode, $Remaining = False) ;Assigns troops
+ 	If $g_iDebugSetlog = 1 Then Setlog("DLL Troopsbar list: " & $result, $COLOR_DEBUG)
+ 	Local $aTroopDataList = StringSplit($result, "|")
+ 	Local $aTemp[12][3]
++
++	; ExtendedAttackBar Demen
++	If $g_abChkExtendedAttackBar[$pMatchMode] Then
++		ReDim $aTemp[22][3]
++		ReDim $g_avAttackTroops[22][2]
++	EndIf
++	; ExtendedAttackBar Demen
++
+ 	If $result <> "" Then
+ 		; example : 0#0#92|1#1#108|2#2#8|22#3#1|20#4#1|21#5#1|26#5#0|23#6#1|24#7#2|25#8#1|29#10#1
+ 		; [0] = Troop Enum Cross Reference [1] = Slot position [2] = Quantities
+diff --git a/COCBot/functions/Attack/Troops/CheckHeroesHealth.au3 b/COCBot/functions/Attack/Troops/CheckHeroesHealth.au3
+index 893e1f8..0a307d6 100644
+--- a/COCBot/functions/Attack/Troops/CheckHeroesHealth.au3
++++ b/COCBot/functions/Attack/Troops/CheckHeroesHealth.au3
+@@ -17,16 +17,32 @@ Func CheckHeroesHealth()
+ 	If $g_bCheckKingPower Or $g_bCheckQueenPower Or $g_bCheckWardenPower Then
+ 		ForceCaptureRegion() ; ensure no screenshot caching kicks in
+ 
++		; ExtendedAttackBar - Demen
++		Local $TempKingSlot = $g_iKingSlot
++		Local $TempQueenSlot = $g_iQueenSlot
++		Local $TempWardenSlot = $g_iWardenSlot
++		If $g_iKingSlot >= 11 Or $g_iQueenSlot >= 11 Or $g_iWardenSlot >= 11 Then
++			If $g_bDraggedAttackBar = False Then DragAttackBar($g_iTotalAttackSlot, False) ; drag forward
++		ElseIf $g_iKingSlot >= 0 And $g_iQueenSlot >= 0 And $g_iWardenSlot >= 0 And ($g_iKingSlot < $g_iTotalAttackSlot - 10 Or $g_iQueenSlot < $g_iTotalAttackSlot - 10 Or $g_iWardenSlot < $g_iTotalAttackSlot - 10) Then
++			If $g_bDraggedAttackBar Then DragAttackBar($g_iTotalAttackSlot, True) ; return drag
++		EndIf
++		If $g_bDraggedAttackBar Then
++			$TempKingSlot -= $g_iTotalAttackSlot - 10
++			$TempQueenSlot -= $g_iTotalAttackSlot - 10
++			$TempWardenSlot -= $g_iTotalAttackSlot - 10
++		EndIf
++		; ExtendedAttackBar - Demen
++
+ 		If $g_iActivateKQCondition = "Auto" Then
+ 
+ 			Local $aKingHealthCopy = $aKingHealth ; copy ScreenCoordinates array to modify locally with dynamic X coordinate from slotposition
+-			$aKingHealthCopy[0] = GetXPosOfArmySlot($g_iKingSlot, 68) + 2
++			$aKingHealthCopy[0] = GetXPosOfArmySlot($TempKingSlot, 68) + 2 ; ExtendedAttackBar - Demen
+ 
+ 			Local $aQueenHealthCopy = $aQueenHealth ; copy ScreenCoordinates array to modify locally with dynamic X coordinate from slotposition
+-			$aQueenHealthCopy[0] = GetXPosOfArmySlot($g_iQueenSlot, 68) + 3
++			$aQueenHealthCopy[0] = GetXPosOfArmySlot($TempQueenSlot, 68) + 3 ; ExtendedAttackBar - Demen
+ 
+ 			Local $aWardenHealthCopy = $aWardenHealth
+-			$aWardenHealthCopy[0] = GetXPosOfArmySlot($g_iWardenSlot, 68)
++			$aWardenHealthCopy[0] = GetXPosOfArmySlot($TempWardenSlot, 68) ; ExtendedAttackBar - Demen
+ 
+ 			If _Sleep($DELAYRESPOND) Then Return ; improve pause button response
+ 
+@@ -40,7 +56,7 @@ Func CheckHeroesHealth()
+ 				If $g_iDebugSetlog = 1 Then Setlog(" King _GetPixelColor(" & $aKingHealthCopy[0] & "," & $aKingHealthCopy[1] & "): " & $KingPixelColor, $COLOR_DEBUG)
+ 				If Not _CheckPixel2($aKingHealthCopy, $KingPixelColor, "Red+Blue") Then
+ 					SetLog("King is getting weak, Activating King's power", $COLOR_INFO)
+-					SelectDropTroop($g_iKingSlot)
++					SelectDropTroop($TempKingSlot) ; ExtendedAttackBar - Demen
+ 					$g_bCheckKingPower = False
+ 				EndIf
+ 			EndIf
+@@ -49,7 +65,7 @@ Func CheckHeroesHealth()
+ 				If $g_iDebugSetlog = 1 Then Setlog(" Queen _GetPixelColor(" & $aQueenHealthCopy[0] & "," & $aQueenHealthCopy[1] & "): " & $QueenPixelColor, $COLOR_DEBUG)
+ 				If Not _CheckPixel2($aQueenHealthCopy, $QueenPixelColor, "Red+Blue") Then
+ 					SetLog("Queen is getting weak, Activating Queen's power", $COLOR_INFO)
+-					SelectDropTroop($g_iQueenSlot)
++					SelectDropTroop($TempQueenSlot) ; ExtendedAttackBar - Demen
+ 					$g_bCheckQueenPower = False
+ 				EndIf
+ 			EndIf
+@@ -58,7 +74,7 @@ Func CheckHeroesHealth()
+ 				If $g_iDebugSetlog = 1 Then Setlog(" Grand Warden _GetPixelColor(" & $aWardenHealthCopy[0] & "," & $aWardenHealthCopy[1] & "): " & $WardenPixelColor, $COLOR_DEBUG)
+ 				If Not _CheckPixel2($aWardenHealthCopy, $WardenPixelColor, "Red+Blue") Then
+ 					SetLog("Grand Warden is getting weak, Activating Warden's power", $COLOR_INFO)
+-					SelectDropTroop($g_iWardenSlot)
++					SelectDropTroop($TempWardenSlot) ; ExtendedAttackBar - Demen
+ 					$g_bCheckWardenPower = False
+ 				EndIf
+ 			EndIf
+@@ -75,7 +91,7 @@ Func CheckHeroesHealth()
+ 				EndIf
+ 				If $g_iDelayActivateKQ / 1000 <= $aDisplayTime[$eHeroBarbarianKing] Then
+ 					SetLog("Activating King's power after " & $aDisplayTime[$eHeroBarbarianKing] & "'s", $COLOR_INFO)
+-					SelectDropTroop($g_iKingSlot)
++					SelectDropTroop($TempKingSlot) ; ExtendedAttackBar - Demen
+ 					$g_bCheckKingPower = False ; Reset check power flag
+ 					$g_aHeroesTimerActivation[$eHeroBarbarianKing] = 0 ; Reset Timer
+ 				EndIf
+@@ -87,7 +103,7 @@ Func CheckHeroesHealth()
+ 				EndIf
+ 				If $g_iDelayActivateKQ / 1000 <= $aDisplayTime[$eHeroArcherQueen] Then
+ 					SetLog("Activating Queen's power after " & $aDisplayTime[$eHeroArcherQueen] & "'s", $COLOR_INFO)
+-					SelectDropTroop($g_iQueenSlot)
++					SelectDropTroop($TempQueenSlot) ; ExtendedAttackBar - Demen
+ 					$g_bCheckQueenPower = False ; Reset check power flag
+ 					$g_aHeroesTimerActivation[$eHeroArcherQueen] = 0 ; Reset Timer
+ 				EndIf
+@@ -100,7 +116,7 @@ Func CheckHeroesHealth()
+ 				If ($g_bActivateWardenCondition And $g_iDelayActivateW / 1000 <= $aDisplayTime[$eHeroGrandWarden]) Or _  	 ; check the forced timer just for Warden
+ 						($g_iActivateKQCondition = "Manual" And $g_bActivateWardenCondition = False And $g_iDelayActivateKQ / 1000 <= $aDisplayTime[$eHeroGrandWarden]) Then ; check regular timer from ALL heroes
+ 					SetLog("Activating Warden's power after " & $aDisplayTime[$eHeroGrandWarden] & "'s", $COLOR_INFO)
+-					SelectDropTroop($g_iWardenSlot)
++					SelectDropTroop($TempWardenSlot) ; ExtendedAttackBar - Demen
+ 					$g_bCheckWardenPower = False ; Reset check power flag
+ 					$g_aHeroesTimerActivation[$eHeroGrandWarden] = 0 ; Reset Timer
+ 				EndIf
+diff --git a/COCBot/functions/Attack/Troops/GetXPosOfArmySlot.au3 b/COCBot/functions/Attack/Troops/GetXPosOfArmySlot.au3
+index f4e7737..b7a370f 100644
+--- a/COCBot/functions/Attack/Troops/GetXPosOfArmySlot.au3
++++ b/COCBot/functions/Attack/Troops/GetXPosOfArmySlot.au3
+@@ -24,6 +24,8 @@ Func GetXPosOfArmySlot($slotNumber, $xOffsetFor11Slot)
+ 
+ 	If $slotNumber = $g_iKingSlot Or $slotNumber = $g_iQueenSlot Or $slotNumber = $g_iWardenSlot Then $xOffsetFor11Slot += 8
+ 
++	If $g_bDraggedAttackBar Then Return $xOffsetFor11Slot + $SlotComp + ($slotNumber * 72) + 14	; ExtendedAttackBar - Demen
++
+ 	; check Dark color on slot 0 to verify if exists > 11 slots
+ 	; $SlotPixelColor = _ColorCheck(_GetPixelColor(17, 580 + $g_iBottomOffsetY, True), Hex(0x07202A, 6), 20)
+ 	$CheckSlot12 = _ColorCheck(_GetPixelColor(17, 643, True), Hex(0x478AC6, 6), 15) Or _  	 ; Slot Filled / Background Blue / More than 11 Slots
+diff --git a/COCBot/functions/Config/applyConfig.au3 b/COCBot/functions/Config/applyConfig.au3
+index 9f949c6..d52c481 100644
+--- a/COCBot/functions/Config/applyConfig.au3
++++ b/COCBot/functions/Config/applyConfig.au3
+@@ -1135,6 +1135,9 @@ Func ApplyConfig_600_29_DB($TypeReadSave)
+ 			GUICtrlSetData($g_hTxtTHSnipeBeforeDBTiles, $g_iTHSnipeBeforeTiles[$DB])
+ 			LoadDBSnipeAttacks() ; recreate combo box values
+ 			_GUICtrlComboBox_SetCurSel($g_hCmbTHSnipeBeforeDBScript, _GUICtrlComboBox_FindStringExact($g_hCmbTHSnipeBeforeDBScript, $g_iTHSnipeBeforeScript[$DB]))
++			; ExtendedAttackBar
++			GUICtrlSetState($g_hChkExtendedAttackBarDB, $g_abChkExtendedAttackBar[$DB] ? $GUI_CHECKED : $GUI_UNCHECKED)
++
+ 		Case "Save"
+ 			$g_aiAttackAlgorithm[$DB] = _GUICtrlComboBox_GetCurSel($g_hCmbDBAlgorithm)
+ 			$g_aiAttackTroopSelection[$DB] = _GUICtrlComboBox_GetCurSel($g_hCmbDBSelectTroop)
+@@ -1157,6 +1160,9 @@ Func ApplyConfig_600_29_DB($TypeReadSave)
+ 			$g_bTHSnipeBeforeEnable[$DB] = (GUICtrlRead($g_hChkTHSnipeBeforeDBEnable) = $GUI_CHECKED)
+ 			$g_iTHSnipeBeforeTiles[$DB] = GUICtrlRead($g_hTxtTHSnipeBeforeDBTiles)
+ 			$g_iTHSnipeBeforeScript[$DB] = GUICtrlRead($g_hCmbTHSnipeBeforeDBScript)
++			; ExtendedAttackBar
++			$g_abChkExtendedAttackBar[$DB] = GUICtrlRead($g_hChkExtendedAttackBarDB) = $GUI_CHECKED ? True : False
++
+ 	EndSwitch
+ 
+ 	ApplyConfig_600_29_DB_Standard($TypeReadSave)
+@@ -1381,6 +1387,9 @@ Func ApplyConfig_600_29_LB($TypeReadSave)
+ 			GUICtrlSetData($g_hTxtTHSnipeBeforeLBTiles, $g_iTHSnipeBeforeTiles[$LB])
+ 			LoadABSnipeAttacks() ; recreate combo box values
+ 			_GUICtrlComboBox_SetCurSel($g_hCmbTHSnipeBeforeLBScript, _GUICtrlComboBox_FindStringExact($g_hCmbTHSnipeBeforeLBScript, $g_iTHSnipeBeforeScript[$LB]))
++			; ExtendedAttackBar
++			GUICtrlSetState($g_hChkExtendedAttackBarLB, $g_abChkExtendedAttackBar[$LB] ? $GUI_CHECKED : $GUI_UNCHECKED)
++
+ 		Case "Save"
+ 			$g_aiAttackAlgorithm[$LB] = _GUICtrlComboBox_GetCurSel($g_hCmbABAlgorithm)
+ 			$g_aiAttackTroopSelection[$LB] = _GUICtrlComboBox_GetCurSel($g_hCmbABSelectTroop)
+@@ -1403,6 +1412,9 @@ Func ApplyConfig_600_29_LB($TypeReadSave)
+ 			$g_bTHSnipeBeforeEnable[$LB] = (GUICtrlRead($g_hChkTHSnipeBeforeLBEnable) = $GUI_CHECKED)
+ 			$g_iTHSnipeBeforeTiles[$LB] = GUICtrlRead($g_hTxtTHSnipeBeforeLBTiles)
+ 			$g_iTHSnipeBeforeScript[$LB] = GUICtrlRead($g_hCmbTHSnipeBeforeLBScript)
++			; ExtendedAttackBar
++			$g_abChkExtendedAttackBar[$LB] = GUICtrlRead($g_hChkExtendedAttackBarLB) = $GUI_CHECKED ? True : False
++
+ 	EndSwitch
+ 
+ 	ApplyConfig_600_29_LB_Standard($TypeReadSave)
+diff --git a/COCBot/functions/Config/readConfig.au3 b/COCBot/functions/Config/readConfig.au3
+index 9ce8410..038afb7 100644
+--- a/COCBot/functions/Config/readConfig.au3
++++ b/COCBot/functions/Config/readConfig.au3
+@@ -893,6 +893,8 @@ Func ReadConfig_600_29_DB()
+ 	IniReadS($g_iMilkFarmForceToleranceNormal, $g_sProfileConfigPath, "MilkingAttack", "MilkFarmForcetolerancenormal", 60, "int")
+ 	IniReadS($g_iMilkFarmForceToleranceBoosted, $g_sProfileConfigPath, "MilkingAttack", "MilkFarmForcetoleranceboosted", 60, "int")
+ 	IniReadS($g_iMilkFarmForceToleranceDestroyed, $g_sProfileConfigPath, "MilkingAttack", "MilkFarmForcetolerancedestroyed", 60, "int")
++	; ExtendedAttackBar
++	IniReadS($g_abChkExtendedAttackBar[$DB], $g_sProfileConfigPath, "attack", "ExtendedAttackBarDB", False, "Bool")
+ EndFunc   ;==>ReadConfig_600_29_DB
+ 
+ Func ReadConfig_600_29_LB()
+@@ -933,6 +935,8 @@ Func ReadConfig_600_29_LB()
+ 	IniReadS($g_aiAttackScrRedlineRoutine[$LB], $g_sProfileConfigPath, "attack", "RedlineRoutineAB", $g_aiAttackScrRedlineRoutine[$LB], "Int")
+ 	IniReadS($g_aiAttackScrDroplineEdge[$LB], $g_sProfileConfigPath, "attack", "DroplineEdgeAB", $g_aiAttackScrDroplineEdge[$LB], "Int")
+ 	IniReadS($g_sAttackScrScriptName[$LB], $g_sProfileConfigPath, "attack", "ScriptAB", "Barch four fingers")
++	; ExtendedAttackBar
++	IniReadS($g_abChkExtendedAttackBar[$LB], $g_sProfileConfigPath, "attack", "ExtendedAttackBarLB", False, "Bool")
+ EndFunc   ;==>ReadConfig_600_29_LB
+ 
+ Func ReadConfig_600_29_TS()
+diff --git a/COCBot/functions/Config/saveConfig.au3 b/COCBot/functions/Config/saveConfig.au3
+index dfbbef5..9896ef0 100644
+--- a/COCBot/functions/Config/saveConfig.au3
++++ b/COCBot/functions/Config/saveConfig.au3
+@@ -717,6 +717,9 @@ Func SaveConfig_600_29_DB()
+ 	_Ini_Add("attack", "THSnipeBeforeDBTiles", $g_iTHSnipeBeforeTiles[$DB])
+ 	_Ini_Add("attack", "THSnipeBeforeDBScript", $g_iTHSnipeBeforeScript[$DB])
+ 
++	; ExtendedAttackBar
++	_Ini_Add("attack", "ExtendedAttackBarDB", $g_abChkExtendedAttackBar[$DB] ? 1 : 0)
++
+ 	SaveConfig_600_29_DB_Standard()
+ 
+ 	SaveConfig_600_29_DB_Scripted()
+@@ -818,6 +821,9 @@ Func SaveConfig_600_29_LB()
+ 	_Ini_Add("attack", "THSnipeBeforeLBTiles", $g_iTHSnipeBeforeTiles[$LB])
+ 	_Ini_Add("attack", "THSnipeBeforeLBScript", $g_iTHSnipeBeforeScript[$LB])
+ 
++	; ExtendedAttackBar
++	_Ini_Add("attack", "ExtendedAttackBarLB", $g_abChkExtendedAttackBar[$LB] ? 1 : 0)
++
+ 	SaveConfig_600_29_LB_Standard()
+ 
+ 	SaveConfig_600_29_LB_Scripted()
+diff --git a/COCBot/functions/Image Search/ExtendedAttackBarCheck.au3 b/COCBot/functions/Image Search/ExtendedAttackBarCheck.au3
+new file mode 100644
+index 0000000..1489ac7
+--- /dev/null
++++ b/COCBot/functions/Image Search/ExtendedAttackBarCheck.au3	
+@@ -0,0 +1,164 @@
++; #FUNCTION# ====================================================================================================================
++; Name ..........: ExtendedAttackBarCheck (part of AttackBarCheck($Remaining))
++; Description ...: Drag Attack Bar for more troops/spells beyond the Slot 11
++; Syntax ........:
++; Parameters ....:
++; Return values .:
++; Author ........: Demen
++; Modified ......:
++; Remarks .......: This file is part of MyBot, previously known as ClashGameBot. Copyright 2015-2017
++;                  MyBot is distributed under the terms of the GNU GPL
++; Related .......:
++; Link ..........: https://github.com/MyBotRun/MyBot/wiki
++; Example .......: No
++; ===============================================================================================================================
++
++Func ExtendedAttackBarCheck($aTroop1stPage, $Remaining)
++
++	Local $x = 0, $y = 659, $x1 = 853, $y1 = 698
++	Static $CheckSlotwHero2 = False
++	Local $iCCSpell = 0
++	; Setup arrays, including default return values for $return
++	Local $aResult[1][6], $aCoordArray[1][2], $aCoords, $aCoordsSplit, $aValue
++	Local $redLines = "FV"
++	Local $directory = @ScriptDir & "\imgxml\AttackBar"
++	If $g_bRunState = False Then Return
++	; Capture the screen for comparison
++	_CaptureRegion2($x, $y, $x1, $y1)
++
++	Local $strinToReturn = ""
++	; Perform the search
++	Local $res = DllCallMyBot("SearchMultipleTilesBetweenLevels", "handle", $g_hHBitmap2, "str", $directory, "str", "FV", "Int", 0, "str", $redLines, "Int", 0, "Int", 1000)
++
++	If IsArray($res) Then
++		If $res[0] = "0" Or $res[0] = "" Then
++			SetLog("Imgloc|AttackBarCheck not found!", $COLOR_RED)
++		ElseIf StringLeft($res[0], 2) = "-1" Then
++			SetLog("DLL Error: " & $res[0] & ", AttackBarCheck", $COLOR_RED)
++		Else
++			; Get the keys for the dictionary item.
++			If $g_iDebugSetlog = 1 Then Setlog("$res[0] = " & $res[0])
++			Local $aKeys = StringSplit($res[0], "|", $STR_NOCOUNT)
++
++			; Redimension the result array to allow for the new entries
++			ReDim $aResult[UBound($aKeys)][6]
++
++			; Loop through the array
++			For $i = 0 To UBound($aKeys) - 1
++				If $g_bRunState = False Then Return
++				; Get the property values
++				$aResult[$i][0] = RetrieveImglocProperty($aKeys[$i], "objectname")
++				; Get the coords property
++				$aValue = RetrieveImglocProperty($aKeys[$i], "objectpoints")
++				$aCoords = StringSplit($aValue, "|", $STR_NOCOUNT)
++				$aCoordsSplit = StringSplit($aCoords[0], ",", $STR_NOCOUNT)
++				If UBound($aCoordsSplit) = 2 Then
++					; Store the coords into a two dimensional array
++					$aCoordArray[0][0] = $aCoordsSplit[0] ; X coord.
++					$aCoordArray[0][1] = $aCoordsSplit[1] ; Y coord.
++				Else
++					$aCoordArray[0][0] = -1
++					$aCoordArray[0][1] = -1
++				EndIf
++				If $g_iDebugSetlog = 1 Then Setlog($aResult[$i][0] & " | $aCoordArray: " & $aCoordArray[0][0] & "-" & $aCoordArray[0][1])
++				;;;;;;;; If exist Castle Spell ;;;;;;;
++				If UBound($aCoords) > 1 And StringInStr($aResult[$i][0], "Spell") <> 0 Then
++					$iCCSpell = 1
++					If $g_iDebugSetlog = 1 Then Setlog($aResult[$i][0] & " detected twice!")
++					Local $aCoordsSplit2 = StringSplit($aCoords[1], ",", $STR_NOCOUNT)
++					If UBound($aCoordsSplit2) = 2 Then
++						; Store the coords into a two dimensional array
++						If $aCoordsSplit2[0] < $aCoordsSplit[0] Then
++							$aCoordArray[0][0] = $aCoordsSplit2[0] ; X coord.
++							$aCoordArray[0][1] = $aCoordsSplit2[1] ; Y coord.
++							If $g_iDebugSetlog = 1 Then Setlog($aResult[$i][0] & " | $aCoordArray: " & $aCoordArray[0][0] & "-" & $aCoordArray[0][1], $COLOR_RED)
++						EndIf
++					Else
++						$aCoordArray[0][0] = -1
++						$aCoordArray[0][1] = -1
++					EndIf
++				EndIf
++				; Store the coords array as a sub-array
++				$aResult[$i][1] = Number($aCoordArray[0][0])
++				$aResult[$i][2] = Number($aCoordArray[0][1])
++			Next
++
++			_ArraySort($aResult, 0, 0, 0, 1) ; Sort By X position , will be the Slot 0 to $i
++
++			For $i = 0 To UBound($aResult) - 1
++				If $aResult[$i][0] = "King" Or $aResult[$i][0] = "Queen" Or $aResult[$i][0] = "Warden" Then
++					$CheckSlotwHero2 = True
++				EndIf
++			Next
++
++			Local $iSlotExtended = 0
++			For $i = 0 To UBound($aResult) - 1
++				Local $Slottemp
++				If $aResult[$i][1] > 0 Then
++					If $g_iDebugSetlog = 1 Then SetLog("SLOT : " & $i, $COLOR_DEBUG) ;Debug
++					If $g_iDebugSetlog = 1 Then SetLog("Detection : " & $aResult[$i][0] & "|x" & $aResult[$i][1] & "|y" & $aResult[$i][2], $COLOR_DEBUG) ;Debug
++
++					; Check if troop is already in 1st page
++					If IsArray($aTroop1stPage) Then
++						If _ArraySearch($aTroop1stPage, $aResult[$i][0]) <> -1 Then
++							If $g_iDebugSetlog = 1 Then Setlog($aResult[$i][0] & " is already found in 1st page at Slot: " & _ArraySearch($aTroop1stPage, $aResult[$i][0]))
++							ContinueLoop
++						EndIf
++					EndIf
++
++					$iSlotExtended += 1
++					$Slottemp = SlotAttack(Number($aResult[$i][1]), False, False)
++					$Slottemp[0] += 18
++					If $CheckSlotwHero2 And StringInStr($aResult[$i][0], "Spell") = 0 Then $Slottemp[0] -= 14
++					If $g_bRunState = False Then Return ; Stop function
++					If _Sleep(20) Then Return ; Pause function
++					If UBound($Slottemp) = 2 Then
++						If $g_iDebugSetlog = 1 Then SetLog("OCR : " & $Slottemp[0] & "|SLOT: " & $Slottemp[1], $COLOR_DEBUG) ;Debug
++						If $aResult[$i][0] = "Castle" Or $aResult[$i][0] = "King" Or $aResult[$i][0] = "Queen" Or $aResult[$i][0] = "Warden" Then
++							$aResult[$i][3] = 1
++						Else
++							$aResult[$i][3] = Number(getTroopCountBig(Number($Slottemp[0]), 636)) ; For Bigg Numbers , when the troops is selected
++							If $aResult[$i][3] = "" Or $aResult[$i][3] = 0 Then $aResult[$i][3] = Number(getTroopCountSmall(Number($Slottemp[0]), 641)) ; For small Numbers
++						EndIf
++						$aResult[$i][4] = $iSlotExtended + 10 ; slot from 11 to 21
++					Else
++						Setlog("Problem with Attack bar detection!", $COLOR_RED)
++						SetLog("Detection : " & $aResult[$i][0] & "|x" & $aResult[$i][1] & "|y" & $aResult[$i][2], $COLOR_DEBUG)
++						$aResult[$i][3] = -1
++						$aResult[$i][4] = -1
++					EndIf
++
++					$strinToReturn &= "|" & TroopIndexLookup($aResult[$i][0]) & "#" & $aResult[$i][4] & "#" & $aResult[$i][3]
++				EndIf
++			Next
++			If Not $Remaining Then
++				$g_iTotalAttackSlot = $iSlotExtended + 10 + $iCCSpell
++			Else
++				$g_iTotalAttackSlot = _Max($g_iTotalAttackSlot, $iSlotExtended + 10)
++			EndIf
++
++		EndIf
++	EndIf
++
++	If $g_iDebugSetlog = 1 Then Setlog("Extended String: " & $strinToReturn)
++	Return $strinToReturn
++
++EndFunc   ;==>AttackBarCheck
++
++Func DragAttackBar($iTotalSlot = 20, $bBack = False)
++	If $g_iTotalAttackSlot > 10 Then $iTotalSlot = $g_iTotalAttackSlot
++	Local $bAlreadyDrag = False
++	If $bBack = False Then
++		If $g_iDebugSetlog Then Setlog("Dragging attack troop bar to 2nd page. Distance = " & $iTotalSlot - 9 & " slots")
++		ClickDrag(25 + 73 * ($iTotalSlot - 9), 660, 25, 660, 1000)
++		If _Sleep(1500) Then Return
++		$bAlreadyDrag = True
++	Else
++		If $g_iDebugSetlog Then Setlog("Dragging attack troop bar back to 1st page. Distance = " & $iTotalSlot - 9 & " slots")
++		ClickDrag(25, 660, 25 + 73 * ($iTotalSlot - 9), 660, 1000)
++		If _Sleep(1000) Then Return
++		$bAlreadyDrag = False
++	EndIf
++	$g_bDraggedAttackBar = $bAlreadyDrag
++	Return $bAlreadyDrag
++EndFunc   ;==>DragAttackBar
+diff --git a/COCBot/functions/Image Search/imglocAttackBar.au3 b/COCBot/functions/Image Search/imglocAttackBar.au3
+index 2fc7278..7866c0f 100644
+--- a/COCBot/functions/Image Search/imglocAttackBar.au3	
++++ b/COCBot/functions/Image Search/imglocAttackBar.au3	
+@@ -37,6 +37,7 @@ Func AttackBarCheck($Remaining = False)
+ 		$CheckSlotwHero = False
+ 	EndIf
+ 
++	If $g_abChkExtendedAttackBar[$g_iMatchMode] And $g_bDraggedAttackBar Then DragAttackBar($g_iTotalAttackSlot, True) ; return drag for the 2nd Recalc - ExtendedAttackBar - Demen
+ 
+ 	; Reset to level one the Spells level
+ 	$g_iLSpellLevel = 1
+@@ -163,7 +164,9 @@ Func AttackBarCheck($Remaining = False)
+ 						$aResult[$i][3] = -1
+ 						$aResult[$i][4] = -1
+ 					EndIf
+-					$strinToReturn &= "|" & TroopIndexLookup($aResult[$i][0]) & "#" & $aResult[$i][4] & "#" & $aResult[$i][3]
++					If $aResult[$i][4] <= 10 Then ; ExtendedAttackBarCheck - Demen
++						$strinToReturn &= "|" & TroopIndexLookup($aResult[$i][0]) & "#" & $aResult[$i][4] & "#" & $aResult[$i][3]
++					EndIf
+ 				EndIf
+ 			Next
+ 		EndIf
+@@ -192,11 +195,24 @@ Func AttackBarCheck($Remaining = False)
+ 		_GDIPlus_BitmapDispose($editedImage)
+ 	EndIf
+ 
++	; Drag & checking ExtendedAttackBar - Demen
++	If $g_abChkExtendedAttackBar[$g_iMatchMode] And $CheckSlot12 And IsArray($aResult) Then
++		If $g_iDebugSetlog = 1 Then Setlog("$strinToReturn 1st page = " & $strinToReturn)
++		Local $aTroop1stPage[UBound($aResult)]
++		For $i = 0 To UBound($aResult) - 1
++			$aTroop1stPage[$i] = $aResult[$i][0]
++		Next
++		DragAttackBar()
++		$strinToReturn &= ExtendedAttackBarCheck($aTroop1stPage, $Remaining)
++		If Not $Remaining Then DragAttackBar($g_iTotalAttackSlot, True) ; return drag
++	EndIf	; Drag & checking ExtendedAttackBar - Demen
++
+ 	$strinToReturn = StringTrimLeft($strinToReturn, 1)
+ 
+ 	; Setlog("String: " & $strinToReturn)
+ 	; Will return [0] = Name , [1] = X , [2] = Y , [3] = Quantities , [4] = Slot Number
+ 	; Old style is: "|" & Troopa Number & "#" & Slot Number & "#" & Quantities
++
+ 	Return $strinToReturn
+ 
+ EndFunc   ;==>AttackBarCheck
+-- 
+2.7.4.windows.1
